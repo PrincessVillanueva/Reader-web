@@ -14,11 +14,11 @@ const LandingLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-teal-100">
+    <div className="flex flex-col sm:flex-row bg-teal-100 overflow-x-hidden">
       {isSidebarOpen && (
-        <div className="w-64">
-          <Sidebar />
-        </div>
+        <div className={`w-64 ${isSidebarOpen ? 'block' : 'hidden'} sm:block`}>
+        <Sidebar />
+      </div>
       )}
       <div className="flex-1 flex flex-col">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
