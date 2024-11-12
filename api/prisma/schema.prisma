@@ -42,8 +42,11 @@ model Book {
 
   comments    Comment[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  available   Int       @default(0)
+  total       Int       @default(0)
 }
 
 model Author {

@@ -1,76 +1,15 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaTimes, FaChevronDown, FaFilter, FaEdit, FaTrash } from 'react-icons/fa';
 
-/*// Sample book data with category field added
-const latestBooksData = [
-  {
-    id: 1,
-    title: "Blink",
-    author: "Malcolm Gladwell",
-    cover: "/rebook-images/blink.png",
-    category: "Non-Fiction",  // Added category
-    copiesBorrowed: "13",
-    copiesReturned: "1",
-    status: "Available",
-    copies:"14"
-  },
-  {
-    id: 2,
-    title: "Hold Still",
-    author: "Author 3",
-    cover: "/rebook-images/hold.png",
-    category: "Fiction",  // Added category
-    copiesBorrowed: "10",
-    copiesReturned: "5",
-    status: "Not Available",
-    copies:"10",
-  },
-  {
-    id: 3,
-    title: "Circle",
-    author: "Madeline Miller",
-    cover: "/rebook-images/circle.png",
-    category: "Fiction",  // Added category
-    copiesBorrowed: "7",
-    copiesReturned: "2",
-    status: "Available",
-    copies: "8",
-  },
-  {
-    id: 4,
-    title: "1984",
-    author: "George Orwell",
-    cover: "/rebook-images/1984.png",
-    category: "Fiction",  // Added category
-    copiesBorrowed: "5",
-    copiesReturned: "5",
-    status: "Available",
-    copies: "6",
-  },
-  {
-    id: 5,
-    title: "Slow Down",
-    author: "Rachelle Williams",
-    cover: "/rebook-images/slow.png",
-    category: "Non-Fiction",  // Added category
-    copiesBorrowed: "3",
-    copiesReturned: "1",
-    status: "Available",
-    copies: "4"
-  },
-];
-
-// Categories and statuses
-const categories = ["All", "Fiction", "Non-Fiction", "Science", "History", "Mystery"];
-const statuses = ["All", "Approved", "Denied", "Pending", "Blocked", "Available", "Not Available"];*/
+const statuses = ["All", "Approved", "Denied", "Pending", "Blocked", "Available", "Not Available"];
 
 const BookInventory = () => {
   const [isFilterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState({});
   const [selectedStatus, setSelectedStatus] = useState('All');
 
   const scrollRef = useRef(null);
@@ -80,6 +19,12 @@ const BookInventory = () => {
 
   const toggleFilterDropdown = () => setFilterDropdownOpen(!isFilterDropdownOpen);
   const clearSearch = () => setSearchTerm('');
+
+  const [books, setBooks] = useState([]);
+  const [booksData, setBooksData] = useState([]);
+
+  const [categories, setCategories] = useState([]);
+  const [categoriesData, setCategoriesData] = useState([]);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -105,17 +50,46 @@ const BookInventory = () => {
     setStatusDropdownOpen(false);
   };
 
-  // Filter books based on search term, category, and status
-  const filteredBooks = latestBooksData.filter((book) => {
-    const matchesSearch =
-      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase());
+  /**
+   * Used for fetching data
+   */
+  useEffect(() => {
+    const fetchBooks = async () => {
+      const response = await fetch("/api/v1/books");
+      const result = await response.json();
 
-    const matchesCategory = selectedCategory === "All" || book.category === selectedCategory;
-    const matchesStatus = selectedStatus === "All" || book.status === selectedStatus;
+      setBooksData(result);
+    }
+    
+    const fetchCategories = async () => {
+      const response = await fetch("/api/v1/categories");
+      const result = await response.json();
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+      setCategoriesData(result);
+    }
+
+    fetchCategories();
+    fetchBooks();
+  }, []);
+
+  /**
+   * Used for searching and filtering
+   */
+  useEffect(() => {
+    // search
+    const filteredBooks = booksData.filter(book => {
+
+      const matchesTerm = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          book.author.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = !selectedCategory.id ? true : selectedCategory.id === book.categoryId;
+
+      return matchesTerm && matchesCategory;
+    });
+
+    setBooks(filteredBooks);
+    setCategories(categoriesData);
+  }, [booksData, categories, categoriesData, searchTerm, selectedCategory, selectedCategory.id]);
 
   return (
     <div className="bg-teal-100 flex flex-col w-full h-full min-h-screen">
@@ -160,18 +134,18 @@ const BookInventory = () => {
                     <ul className="space-y-2 p-2">
                       {categories.map((category) => (
                         <li
-                          key={category}
+                          key={category.id}
                           className="flex items-center space-x-2 p-2 bg-gray-100 rounded hover:bg-teal-600 hover:text-white cursor-pointer"
                           onClick={() => handleCategorySelect(category)}
                         >
                           <input
                             type="radio"
                             name="category"
-                            checked={selectedCategory === category}
+                            checked={selectedCategory.id === category.id}
                             onChange={() => handleCategorySelect(category)}
                             className="w-4 h-4 text-teal-500"
                           />
-                          <span>{category}</span>
+                          <span>{category.name}</span>
                         </li>
                       ))}
                     </ul>
@@ -228,24 +202,25 @@ const BookInventory = () => {
                   <th className="p-4 border-b border-gray-300 text-left">Cover</th>
                   <th className="p-4 border-b border-gray-300 text-left">Title</th>
                   <th className="p-4 border-b border-gray-300 text-left">Author</th>
-                  <th className="p-4 border-b border-gray-300 text-right">Copies</th>
-                  <th className="p-4 border-b border-gray-300 text-right">Returned</th>
-                  <th className="p-4 border-b border-gray-300 text-right">Borrowed</th>
+                  <th className="p-4 border-b border-gray-300 text-right">Available</th>
+                  <th className="p-4 border-b border-gray-300 text-right">Total</th>
                   <th className="p-4 border-b border-gray-300 text-left">Status</th>
                   <th className="p-4 border-b border-gray-300 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredBooks.map((book) => (
+                {books.map((book) => (
                   <tr key={book.id}>
                     <td className="p-4 border-b border-gray-200">
-                      <img src={book.cover} alt={book.title} className="h-16 w-16 object-cover rounded-md" />
+                      <img  src={`/api/v1/cover/${book.cover}`} 
+                            alt={book.title} 
+                            className="h-16 w-16 object-cover rounded-md" 
+                            />
                     </td>
                     <td className="p-4 border-b border-gray-200">{book.title}</td>
-                    <td className="p-4 border-b border-gray-200">{book.author}</td>
-                    <td className="p-4 border-b border-gray-200 text-center">{book.copiesBorrowed}</td>
-                    <td className="p-4 border-b border-gray-200 text-center">{book.copiesReturned}</td>
-                    <td className="p-4 border-b border-gray-200 text-center">{book.copiesBorrowed}</td>
+                    <td className="p-4 border-b border-gray-200">{book.author.name}</td>
+                    <td className="p-4 border-b border-gray-200 text-center">{book.available}</td>
+                    <td className="p-4 border-b border-gray-200 text-center">{book.total}</td>
                     <td className={`p-4 border-b border-gray-200 ${book.status === 'Available' ? 'text-green-600' : 'text-red-600'}`}>
                       {book.status}
                     </td>
@@ -261,7 +236,7 @@ const BookInventory = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredBooks.length === 0 && (
+                {books.length === 0 && (
                   <tr>
                     <td className="p-4 text-center" colSpan="8">No books found.</td>
                   </tr>
